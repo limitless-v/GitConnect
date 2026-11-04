@@ -59,6 +59,22 @@ export function validateRemote(remote:string):void {
   } else {const m=remote.match(scp);if(remote.includes('://') || !m || m[1]!.length===1 || m[2]!.startsWith('-')) throw new Error('Remote must be an SSH URL, e.g. git@github.com:owner/repo.git.');}
 }
 export function sshCommand(key:string):string {return `ssh -i '${key.replaceAll('\\','/').replaceAll("'", "'\\''")}' -o IdentitiesOnly=yes`;}
+export function clone(remote:string,id:string,destination?:string,cwd=process.cwd()):string {
+  const p=load()[id];if(!p) throw new Error('Unknown profile.');
+  validateRemote(remote);validateKey(p.key);
+  const repositoryName=remote.slice(remote.lastIndexOf('/')+1).split(':').pop()!.replace(/\.git$/, '');
+  if(destination!==undefined && (!destination.trim() || /[\0\r\n]/.test(destination))) throw new Error('Provide a valid destination path.');
+  if(!destination && (!repositoryName || repositoryName==='.' || repositoryName==='..')) throw new Error('Provide a destination path for this URL.');
+  const target=path.resolve(cwd,destination ?? repositoryName);
+  const command=sshCommand(p.key);
+  // Supply the selected key during the initial fetch as well as in the new repository.
+  // Environment SSH overrides otherwise take precedence over core.sshCommand.
+  const env={...process.env,GIT_SSH_COMMAND:command,GIT_SSH_VARIANT:'ssh'};
+  try {
+    execFileSync('git',['clone','-c',`core.sshCommand=${command}`,'-c',`user.name=${p.name}`,'-c',`user.email=${p.email}`,'-c',`gitconnect.profile=${id}`,'--',remote,target],{cwd,env,stdio:'inherit'});
+  } catch {throw new Error('Clone failed. Check the SSH URL, destination, and account access. Any files left at the destination have been preserved.');}
+  return target;
+}
 function git(args:string[],cwd:string):string {return run('git',args,cwd);}
 function localValues(key:string,cwd:string):string[] {
   try {return execFileSync('git',['config','--local','--null','--get-all',key],{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).split('\0').filter(v=>v!=='');}

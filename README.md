@@ -21,6 +21,19 @@ gitconnect use work --repo "D:\Projects\My Repo"
 gitconnect status --repo "D:\Projects\My Repo"
 ```
 
+## Clone with a personal or work account
+
+Register a profile with the SSH key belonging to the account you want, then select it when cloning:
+
+```powershell
+gitconnect add personal --name "Your Name" --email "you@personal.com" --key "C:\Users\You\.ssh\id_ed25519_personal"
+gitconnect clone git@github.com:owner/repo.git --account personal "D:\Projects\My Personal Repo"
+```
+
+Omit the destination to create a folder named after the repository in the current directory. Use `gitconnect list` to see available profiles. The selected key authenticates the initial clone, and the new repository saves that profile's SSH key, author name, and email for future operations. Your Windows login and global Git settings stay unchanged. This grants access using the selected account; it does not transfer or fork the remote repository.
+
+Cloning requires an SSH URL and a public key registered with the intended account. HTTPS URLs are rejected. During cloning, the selected profile takes precedence over `GIT_SSH_COMMAND` and `GIT_SSH`; existing environment overrides can still affect later Git commands. Clone progress and passphrase prompts appear in the terminal, and there is no fixed clone timeout. If cloning fails, any remaining destination files are preserved.
+
 Run `use` and `status` inside a repository or pass `--repo`. `use` checks `origin` by default; select another remote with `--remote upstream`. Both fetch and all push URLs for that remote must be SSH URLs (`git@github.com:owner/repo.git` or `ssh://git@github.com/owner/repo.git`). HTTPS and local remotes are rejected before changes. Remotes are never rewritten. SSH host aliases can be used if already configured.
 
 Profiles live in `%USERPROFILE%\.gitconnect\profiles.json`; set `GITCONNECT_HOME` to use another directory. They contain only profile IDs, names, emails, and absolute private-key paths. Key contents are never copied into profiles or logs. Keep your key in its original secure location; GitConnect does not change its permissions. Paths with spaces and apostrophes are supported. `~\` and `~/` expand to your home directory. Quote paths in PowerShell; environment variables must be expanded by your shell.

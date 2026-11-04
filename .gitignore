@@ -50,6 +50,9 @@ web_modules/
 # Optional npm cache directory
 .npm
 
+# Node.js compile cache
+node-compile-cache/
+
 # Optional eslint cache
 .eslintcache
 

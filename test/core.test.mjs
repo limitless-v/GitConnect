@@ -4,7 +4,7 @@ import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {add,load,use,status,validateKey,validateRemote,sshCommand} from '../dist/core.js';
+import {add,load,use,status,validateKey,validateRemote,sshCommand,clone} from '../dist/core.js';
 const root=mkdtempSync(path.join(os.tmpdir(),'gitconnect test '));
 // Isolate from an ancestor repository or Git settings supplied by the host.
 for(const name of ['GIT_DIR','GIT_WORK_TREE','GIT_COMMON_DIR','GIT_CONFIG','GIT_CONFIG_COUNT']) delete process.env[name];
@@ -74,4 +74,33 @@ test('CLI help and errors have expected exit codes',()=>{
  const cli=path.resolve('dist/cli.js');
  assert.match(execFileSync(process.execPath,[cli,'--help'],{encoding:'utf8'}),/GitConnect/);
  assert.throws(()=>execFileSync(process.execPath,[cli,'invalid'],{stdio:'pipe'}),e=>e.status===1);
+});
+test('clone selects account, persists identity and preserves global settings',()=>{
+ const source=path.join(root,'clone source');mkdirSync(source);git(source,'init');
+ git(source,'-c','user.name=Fixture','-c','user.email=fixture@example.com','commit','--allow-empty','-m','Fixture');
+ const url='git@clone-test.invalid:owner/source.git';
+ // Route only this fixture URL to disk so this integration test needs no network.
+ git(root,'config','--global',`url.${source.replaceAll('\\','/')}.insteadOf`,url);
+ const before=readFileSync(process.env.GIT_CONFIG_GLOBAL,'utf8');
+ const destination=path.join(root,"personal clone's folder");
+ const cli=path.resolve('dist/cli.js');
+ execFileSync(process.execPath,[cli,'clone',url,'--account','personal',destination],{cwd:root,stdio:'pipe'});
+ assert.equal(git(destination,'config','--local','user.email'),'personal@example.com');
+ assert.equal(git(destination,'config','--local','user.name'),'Personal User');
+ assert.equal(git(destination,'config','--local','core.sshCommand'),sshCommand(key));
+ assert.equal(git(destination,'config','--local','gitconnect.profile'),'personal');
+ assert.equal(git(destination,'config','--local','remote.origin.url'),url);
+ assert.equal(git(destination,'log','-1','--format=%s'),'Fixture');
+ assert.equal(readFileSync(process.env.GIT_CONFIG_GLOBAL,'utf8'),before);
+ assert.throws(()=>clone(url,'personal',destination,root),/Clone failed/);
+ assert.equal(git(destination,'log','-1','--format=%s'),'Fixture');
+ assert.equal(clone(url,'personal',undefined,root),path.join(root,'source'));
+});
+test('clone rejects invalid accounts and URLs before creating a destination',()=>{
+ const target=path.join(root,'rejected clone');
+ assert.throws(()=>clone('git@github.com:owner/repo.git','missing',target),/Unknown profile/);
+ assert.throws(()=>clone('https://github.com/owner/repo.git','personal',target),/SSH URL/);
+ assert.throws(()=>clone('git@github.com:owner/repo.git','personal',''),/destination/);
+ const cli=path.resolve('dist/cli.js');
+ assert.throws(()=>execFileSync(process.execPath,[cli,'clone','git@github.com:owner/repo.git'],{stdio:'pipe'}),e=>e.status===1);
 });
