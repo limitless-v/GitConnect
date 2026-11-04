@@ -59,6 +59,21 @@ test('invalid push URL fails before altering local config',()=>{
  assert.throws(()=>use('work',repo),/SSH URL/);
  assert.equal(git(repo,'config','--local','--list'),before);
 });
+test('accounts picker marks current profile and applies selection only to the target repo',()=>{
+ const target=path.join(root,'accounts repo');mkdirSync(target);git(target,'init');
+ git(target,'remote','add','upstream','git@github.com:example/repo.git');
+ use('personal',target,'upstream');
+ const before=git(repo,'config','--local','--list');
+ const cli=path.resolve('dist/cli.js');
+ const output=execFileSync(process.execPath,[cli,'accounts','--repo',target,'--remote','upstream'],{input:'1\n',encoding:'utf8'});
+ assert.match(output,/personal.*\(current\)/);
+ assert.equal(git(target,'config','--local','gitconnect.profile'),'work');
+ assert.equal(git(target,'config','--local','user.email'),'work@example.com');
+ assert.equal(git(repo,'config','--local','--list'),before);
+ const selected=git(target,'config','--local','--list');
+ assert.throws(()=>execFileSync(process.execPath,[cli,'accounts'],{cwd:target,input:'q\n',stdio:'pipe'}),e=>e.status===1);
+ assert.equal(git(target,'config','--local','--list'),selected);
+});
 test('missing profiles and non-repositories fail',()=>{
  assert.throws(()=>use('missing',repo),/Unknown profile/);
  const nonrepo=path.join(root,'not-a-repository');mkdirSync(nonrepo);
@@ -72,7 +87,15 @@ test('Windows SSH command quoting reaches ssh as a single identity path',()=>{
 });
 test('CLI help and errors have expected exit codes',()=>{
  const cli=path.resolve('dist/cli.js');
- assert.match(execFileSync(process.execPath,[cli,'--help'],{encoding:'utf8'}),/GitConnect/);
+ for(const args of [[],['help'],['--help'],['-h']]) {
+  const output=execFileSync(process.execPath,[cli,...args],{encoding:'utf8'});
+  assert.ok(output.includes(String.raw`  / ___(_) |_ / ___|___  _ __  _ __   ___  ___| |_ `));
+  assert.ok(!output.includes('\x1b['), 'Redirected help should contain plain text');
+  for(const command of ['add','list','accounts','clone','use','status','help']) assert.match(output,new RegExp(`  ${command}(?: |\\n)`));
+  if(args.length) {
+   for(const command of ['add','list','accounts','clone','use','status','help']) assert.ok(output.includes(`$ gitconnect ${command}`));
+  } else assert.match(output,/gitconnect help/);
+ }
  assert.throws(()=>execFileSync(process.execPath,[cli,'invalid'],{stdio:'pipe'}),e=>e.status===1);
 });
 test('clone selects account, persists identity and preserves global settings',()=>{
@@ -92,6 +115,24 @@ test('clone selects account, persists identity and preserves global settings',()
  assert.equal(git(destination,'config','--local','remote.origin.url'),url);
  assert.equal(git(destination,'log','-1','--format=%s'),'Fixture');
  assert.equal(readFileSync(process.env.GIT_CONFIG_GLOBAL,'utf8'),before);
+ const picked=path.join(root,'picked clone');
+ const output=execFileSync(process.execPath,[cli,'clone',url,picked],{cwd:root,input:'invalid\n2\n',encoding:'utf8'});
+ assert.match(output,/1\. work/);
+ assert.match(output,/2\. personal/);
+ assert.match(output,/Invalid selection/);
+ assert.equal(git(picked,'config','--local','gitconnect.profile'),'personal');
+ const byId=path.join(root,'picked by ID');
+ execFileSync(process.execPath,[cli,'clone',url,byId],{cwd:root,input:'work\n',stdio:['pipe','pipe','pipe']});
+ assert.equal(git(byId,'config','--local','gitconnect.profile'),'work');
+ const httpsSSH='git@github.com:fixture/source.git';
+ git(root,'config','--global','--add',`url.${source.replaceAll('\\','/')}.insteadOf`,httpsSSH);
+ const httpsTarget=path.join(root,'https clone');
+ const httpsOutput=execFileSync(process.execPath,[cli,'clone','https://github.com/fixture/source.git',httpsTarget],{cwd:root,input:'personal\n',encoding:'utf8'});
+ assert.ok(httpsOutput.includes(`Using SSH: ${httpsSSH}`));
+ assert.equal(git(httpsTarget,'config','--local','remote.origin.url'),httpsSSH);
+ assert.equal(git(httpsTarget,'config','--local','gitconnect.profile'),'personal');
+ assert.equal(git(httpsTarget,'config','--local','core.sshCommand'),sshCommand(key));
+ assert.equal(git(httpsTarget,'config','--local','user.email'),'personal@example.com');
  assert.throws(()=>clone(url,'personal',destination,root),/Clone failed/);
  assert.equal(git(destination,'log','-1','--format=%s'),'Fixture');
  assert.equal(clone(url,'personal',undefined,root),path.join(root,'source'));
@@ -99,8 +140,10 @@ test('clone selects account, persists identity and preserves global settings',()
 test('clone rejects invalid accounts and URLs before creating a destination',()=>{
  const target=path.join(root,'rejected clone');
  assert.throws(()=>clone('git@github.com:owner/repo.git','missing',target),/Unknown profile/);
- assert.throws(()=>clone('https://github.com/owner/repo.git','personal',target),/SSH URL/);
+ assert.throws(()=>clone('http://github.com/owner/repo.git','personal',target),/SSH URL/);
  assert.throws(()=>clone('git@github.com:owner/repo.git','personal',''),/destination/);
  const cli=path.resolve('dist/cli.js');
  assert.throws(()=>execFileSync(process.execPath,[cli,'clone','git@github.com:owner/repo.git'],{stdio:'pipe'}),e=>e.status===1);
+ assert.throws(()=>execFileSync(process.execPath,[cli,'clone','git@github.com:owner/repo.git'],{input:'q\n',stdio:'pipe'}),e=>e.status===1&&/cancelled/.test(e.stderr.toString()));
+ assert.throws(()=>execFileSync(process.execPath,[cli,'clone','git@github.com:owner/repo.git'],{env:{...process.env,GITCONNECT_HOME:path.join(root,'empty profiles')},stdio:'pipe'}),e=>e.status===1&&/No saved accounts/.test(e.stderr.toString()));
 });

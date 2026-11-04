@@ -59,7 +59,22 @@ export function validateRemote(remote:string):void {
   } else {const m=remote.match(scp);if(remote.includes('://') || !m || m[1]!.length===1 || m[2]!.startsWith('-')) throw new Error('Remote must be an SSH URL, e.g. git@github.com:owner/repo.git.');}
 }
 export function sshCommand(key:string):string {return `ssh -i '${key.replaceAll('\\','/').replaceAll("'", "'\\''")}' -o IdentitiesOnly=yes`;}
+export function normalizeCloneRemote(remote:string):string {
+  if(/^https:\/\//i.test(remote)) {
+    // These providers share the git@host:path SSH clone convention.
+    const match=remote.match(/^https:\/\/(github\.com|gitlab\.com|bitbucket\.org)\/([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)+)\/?$/i);
+    if(!match) throw new Error('Use a clean HTTPS repository URL from github.com, gitlab.com, or bitbucket.org, or provide the host’s SSH clone URL.');
+    const repository=match[2]!;
+    if(repository.split('/').some(part=>part==='.'||part==='..')) throw new Error('Invalid repository path.');
+    const converted=`git@${match[1]!.toLowerCase()}:${repository}`;
+    validateRemote(converted);
+    return converted;
+  }
+  validateRemote(remote);
+  return remote;
+}
 export function clone(remote:string,id:string,destination?:string,cwd=process.cwd()):string {
+  remote=normalizeCloneRemote(remote);
   const p=load()[id];if(!p) throw new Error('Unknown profile.');
   validateRemote(remote);validateKey(p.key);
   const repositoryName=remote.slice(remote.lastIndexOf('/')+1).split(':').pop()!.replace(/\.git$/, '');
