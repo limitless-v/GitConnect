@@ -31,6 +31,8 @@ Use `gitconnect <command> [options]`. Angle brackets mean a required value; squa
 | `gitconnect clone <url> [--account <id>] [destination]` | Clones using a saved account's SSH key and saves its identity in the new repository. Supported HTTPS links convert to SSH automatically. |
 | `gitconnect use <id> [--repo <path>] [--remote <name>]` | Applies a saved account directly to an existing repository without opening the picker. |
 | `gitconnect status [--repo <path>]` | Prints the effective profile, author name/email, SSH command, and whether SSH environment overrides are present, as JSON. Does not test network access. |
+| `gitconnect push [--repo <path>] [--remote <name>]` | Pushes the current branch and sets its upstream. |
+| `gitconnect pr [--repo <path>] [--remote <name>] [--base <branch>] [--head <branch>] [--title <text>] [--body <text>]` | Creates a pull request on GitHub using GitHub CLI. |
 | `gitconnect help` | Shows full command usage and examples. Aliases: `gitconnect --help` and `gitconnect -h`. |
 
 ### Options and arguments
@@ -99,7 +101,16 @@ gitconnect -h
 
 After selecting an account, use normal `git pull`, `git push`, and `git commit` commands in that repository. The saved SSH key handles authentication; the saved name and email identify future commits. Your selected account must already have access to the remote repository. For converted HTTPS clone links, GitConnect prints the SSH URL and saves that SSH URL as `origin`.
 
-GitConnect currently has no `login`, `logout`, `remove`, or `push` command. Register existing keys with `add`, switch profiles with `accounts` or `use`, and push with Git itself.
+## Push a branch and open a pull request
+
+After committing your changes on a feature branch, push it and open a pull request:
+
+```powershell
+gitconnect push
+gitconnect pr --base main --title "Add a feature" --body "Describe the change."
+```
+
+Both commands default to `origin` in the current repository. `push` uses Git's effective authentication settings. `pr` uses the signed-in GitHub CLI account and the selected remote's github.com push URL. Run `gh auth login` before creating a PR. The head defaults to the current branch, and the base defaults to the repository's default branch. To open a PR from a fork, select the base repository's remote and pass `--head your-login:branch`.
 
 ## Working with saved accounts
 

@@ -7,6 +7,8 @@ const commands = [
   {usage:'clone <url> [--account <id>] [destination]', description:'Clone with a saved SSH account. HTTPS links from GitHub, GitLab, and Bitbucket convert to SSH. Omit --account to open the picker.', examples:['clone git@github.com:owner/repo.git', 'clone git@github.com:owner/repo.git --account personal "D:/Projects/My Repo"']},
   {usage:'use <id> [--repo <path>] [--remote <name>]', description:'Apply an account directly to an existing repository.', examples:['use personal', 'use personal --repo "D:/Projects/My Repo" --remote upstream']},
   {usage:'status [--repo <path>]', description:'Show effective repository identity and SSH settings.', examples:['status', 'status --repo "D:/Projects/My Repo"']},
+  {usage:'push [--repo <path>] [--remote <name>]', description:'Push the current branch and set its upstream.', examples:['push', 'push --remote upstream']},
+  {usage:'pr [--repo <path>] [--remote <name>] [--base <branch>] [--head <branch>] [--title <text>] [--body <text>]', description:'Open a GitHub pull request from a pushed branch using GitHub CLI.', examples:['pr --base main', 'pr --base main --title "Add a feature" --body "Describe the change."']},
   {usage:'help', description:'Show every command with usage and examples. Also: --help or -h.', examples:['help', '--help', '-h']},
 ];
 

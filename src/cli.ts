@@ -6,6 +6,7 @@ import {showHelp} from './help.js';
 import {pickAccount} from './picker.js';
 import {add,load,use,status,clone,normalizeCloneRemote} from './core.js';
 import {createAccount,uploadKey} from './keys.js';
+import {push,createPullRequest} from './publish.js';
 
 async function registerAccount():Promise<string> {
   const prompt=createPrompt({input:process.stdin,output:process.stdout});
@@ -54,7 +55,7 @@ async function chooseAccount(current?:unknown,allowAdd=false):Promise<string> {
   } finally {input.close();}
 }
 try {
-  const {values,positionals}=parseArgs({allowPositionals:true,options:{name:{type:'string'},email:{type:'string'},key:{type:'string'},repo:{type:'string'},remote:{type:'string'},account:{type:'string'},'github-user':{type:'string'},'no-passphrase':{type:'boolean'},help:{type:'boolean',short:'h'}}});
+  const {values,positionals}=parseArgs({allowPositionals:true,options:{name:{type:'string'},email:{type:'string'},key:{type:'string'},repo:{type:'string'},remote:{type:'string'},account:{type:'string'},'github-user':{type:'string'},'no-passphrase':{type:'boolean'},base:{type:'string'},head:{type:'string'},title:{type:'string'},body:{type:'string'},help:{type:'boolean',short:'h'}}});
   const [command,id]=positionals;
   if(values.help||!command||(command==='help'&&positionals.length===1)) showHelp(Boolean(values.help||command==='help'));
   else if(command==='create'&&id&&positionals.length===2&&values.name&&values.email) {
@@ -82,6 +83,8 @@ try {
   }
   else if(command==='use'&&id&&positionals.length===2) {use(id,values.repo,values.remote);console.log(`Selected ${id} for this repository.`);}
   else if(command==='status'&&positionals.length===1) console.log(JSON.stringify(status(values.repo),null,2));
+  else if(command==='push'&&positionals.length===1) push(values.repo,values.remote);
+  else if(command==='pr'&&positionals.length===1) createPullRequest(values.repo,values.remote,values.base,values.head,values.title,values.body);
   else throw new Error('Invalid command or missing arguments. Run gitconnect --help.');
 } catch(error) {console.error(`GitConnect: ${(error as Error).message}`);process.exitCode=1;}
 
