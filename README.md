@@ -2,19 +2,14 @@
 
 A TypeScript CLI that selects an existing SSH key and Git author identity for each repository. Requires Node.js 22+, Git, and OpenSSH (`ssh-keygen` and `ssh`) on PATH. Windows Git must support `core.sshCommand`.
 
-## Setup
+## Installation
 
 ```sh
-cd GitConnect
-npm install
-npm run build
-npm test
-node ./dist/cli.js --help
+npm install --global gitconnect
+gitconnect --help
 ```
 
-Optional: `npm link` exposes the `gitconnect` command. Otherwise use `node /path/to/GitConnect/dist/cli.js` in place of `gitconnect` below. No global installation is required.
-
-Run `gitconnect` to see the GitConnect banner and all available commands. Run `gitconnect help`, `gitconnect --help`, or `gitconnect -h` for full usage and examples of every command.
+If PowerShell blocks the npm script, run `npm.cmd install --global gitconnect` and `gitconnect.cmd --help`.
 
 ## Command reference
 
@@ -179,8 +174,6 @@ Profiles live in `%USERPROFILE%\.gitconnect\profiles.json`; set `GITCONNECT_HOME
 
 The SSH command selects the key with `IdentitiesOnly=yes`. Existing SSH host settings may specify additional identity files. `GIT_SSH_COMMAND`, `GIT_SSH`, command-line Git options, or worktree-specific configuration can affect which identity Git actually uses; `status` flags SSH environment overrides. Author name/email affect future commits, while the SSH key authenticates pushes. Existing commits are unchanged. Account selection applies to SSH operations in this repository, not only the chosen remote. It does not affect GitHub CLI/browser sign-in or HTTPS credentials.
 
-## Verification and limitations
-
-`npm.cmd test` builds and runs integration tests with temporary repositories and a generated disposable test key. Tests cover profile validation, HTTPS-to-SSH conversion and cloning, invalid URL rejection, local-setting preservation, account selection, invalid push URLs, Windows shell quoting, status, and CLI errors. They make no GitHub network calls and do not modify personal keys or global Git configuration. Live GitHub authentication must be checked separately after you register your public key.
+## Removing a repository's profile settings
 
 To stop applying a selected profile, restore your previous values for the four local settings using `git config --local`, or unset those settings if you want to inherit global defaults. Removing a profile record does not undo repository settings.
