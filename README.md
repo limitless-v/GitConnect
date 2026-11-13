@@ -4,15 +4,15 @@ A TypeScript CLI that selects an existing SSH key and Git author identity for ea
 
 ## Setup
 
-```powershell
-cd D:\GitConnect
-npm.cmd install
-npm.cmd run build
-npm.cmd test
-node .\dist\cli.js --help
+```sh
+cd GitConnect
+npm install
+npm run build
+npm test
+node ./dist/cli.js --help
 ```
 
-Optional: `npm.cmd link` exposes the `gitconnect` command. Otherwise use `node D:\GitConnect\dist\cli.js` in place of `gitconnect` below. No global installation is required.
+Optional: `npm link` exposes the `gitconnect` command. Otherwise use `node /path/to/GitConnect/dist/cli.js` in place of `gitconnect` below. No global installation is required.
 
 Run `gitconnect` to see the GitConnect banner and all available commands. Run `gitconnect help`, `gitconnect --help`, or `gitconnect -h` for full usage and examples of every command.
 
