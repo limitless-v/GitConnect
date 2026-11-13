@@ -1,5 +1,5 @@
 import {execFileSync} from 'node:child_process';
-import {readFileSync,writeFileSync,mkdirSync,renameSync,statSync,realpathSync,existsSync,unlinkSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,renameSync,statSync,realpathSync,existsSync,unlinkSync,openSync,readSync,closeSync} from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {randomUUID} from 'node:crypto';
@@ -36,8 +36,14 @@ export function validateKey(input:string):string {
   const key=realpathSync(path.resolve(expanded));
   if(!statSync(key).isFile()) throw new Error('SSH key must be a file.');
   // Inspect the header only; key bytes are never persisted or logged.
-  const content=readFileSync(key,'utf8');
-  if(!/^-----BEGIN (OPENSSH|RSA|EC|DSA|PRIVATE|ENCRYPTED PRIVATE) (?:PRIVATE )?KEY-----/.test(content)) throw new Error('Select an SSH private key, not a public key.');
+  const header=Buffer.alloc(64);
+  const descriptor=openSync(key,'r');
+  try {
+    const bytesRead=readSync(descriptor,header,0,header.length,0);
+    if(!/^-----BEGIN (OPENSSH|RSA|EC|DSA|PRIVATE|ENCRYPTED PRIVATE) (?:PRIVATE )?KEY-----/.test(header.toString('utf8',0,bytesRead))) throw new Error('Select an SSH private key, not a public key.');
+  } finally {
+    closeSync(descriptor);
+  }
   run('ssh-keygen',['-l','-f',key]);
   return key;
 }
